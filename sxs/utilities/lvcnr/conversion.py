@@ -13,12 +13,18 @@ class SimulationConverter(object):
         argument, which will work the same, but not store the value.
 
         """
-        def __init__(self, quiet):
+        def __init__(self, quiet, alternative_name):
             self.history = ""
             self.quiet = quiet
+            self.alternative_name = alternative_name
+
 
         def __call__(self, string):
             if not self.quiet:
+                print(string)
+            self.history += string + "\n"
+
+            if not self.alternative_name:
                 print(string)
             self.history += string + "\n"
 
@@ -28,7 +34,7 @@ class SimulationConverter(object):
         def __repr__(self):
             return repr(self.history)
 
-    def __init__(self, modes=8, tolerance=1e-06, quiet=False):
+    def __init__(self, modes=8, tolerance=1e-06, quiet=False, alternative_name=None):
         """Create an object to be used for converting many waveforms to LVC format
 
         Parameters
@@ -44,6 +50,8 @@ class SimulationConverter(object):
         quiet : bool, optional
             If False (the default), echo each line of the log as it is created;
             otherwise just store the final log in the output file.
+        alternative_name : string, optional
+            Final name for the LVCNR file.
 
         """
         import os
@@ -58,6 +66,7 @@ class SimulationConverter(object):
         self.modes = modes
         self.tolerance = tolerance
         self.quiet = quiet
+        self.alternative_name = alternative_name
 
         self.code_versions = (
             f"python=={platform.python_version()}\n"
@@ -78,6 +87,7 @@ class SimulationConverter(object):
             f"    modes={modes!r},\n"
             f"    tolerance={tolerance!r},\n"
             f"    quiet={quiet!r}\n"
+            f"    alternative_name={alternative_name!r},\n"
             f")"
         )
 
@@ -140,7 +150,8 @@ class SimulationConverter(object):
         from .horizons import horizon_splines_from_sxs, write_horizon_splines_from_sxs
         from .waveforms import convert_modes
 
-        log = self.Log(self.quiet)
+        log = self.Log(self.quiet,self.alternative_name)
+        #log1 = self.Log()
         log(self.command.format(sxs_data_path=sxs_data_path, out_path=out_path,
                                 truncation_time=truncation_time, resolution=resolution))
         log("Starting at "+time.strftime('%H:%M%p %Z on %b %d, %Y'))
@@ -161,7 +172,12 @@ class SimulationConverter(object):
         extrapolation_order = "Extrapolated_N2"
         log("Extrapolation order: " + extrapolation_order)
 
-        out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
+        log("Alternative_name: " + self.alternative_name)
+        if self.alternative_name is None:
+            out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
+        else:
+            out_name = out_path + "/" +self.alternative_name+ "_Res" + str(resolution) + ".h5"
+
         log("Output filename is '{0}'".format(out_name))
 
         start_time, peak_time, version_hist = convert_modes(
@@ -198,7 +214,7 @@ class SimulationConverter(object):
 
 
 def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution=None,
-                       modes=8, tolerance=1e-06, quiet=False):
+                       modes=8, tolerance=1e-06, quiet=False, alternative_name = None):
     """Convert a simulation from the SXS BBH catalog into the LVC format.
 
     This function outputs a file in LVC format named SXS_BBH_####_Res#.h5 in
@@ -231,7 +247,9 @@ def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution
     quiet : bool, optional
         If False (the default), echo each line of the log as it is created; otherwise
         just store the final log in the output file.
+    alternative_name : string, optional
+        String for the name of the final file converted to the LVCNR format.
 
     """
-    lvc_converter = SimulationConverter(modes, tolerance, quiet)
+    lvc_converter = SimulationConverter(modes, tolerance, quiet, alternative_name )
     return lvc_converter.convert(sxs_data_path, out_path, truncation_time, resolution)
