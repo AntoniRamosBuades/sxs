@@ -111,7 +111,7 @@ class SimulationConverter(object):
         self.sxs_catalog_resolutions = sxs.zenodo.catalog.resolutions_for_simulations(self.sxs_catalog)
 
 
-    def convert(self, sxs_data_path, out_path, truncation_time=None, resolution=None, truncation_tol=None):
+    def convert(self, sxs_data_path, out_path, truncation_time=None, resolution=None, truncation_tol=None,extrapolation_order =2):
         """Convert a simulation from the SXS BBH catalog into the LVC format.
 
         This function outputs a file in LVC format named SXS_BBH_####_Res#.h5 in
@@ -169,13 +169,22 @@ class SimulationConverter(object):
         sxs_id = sxs_id_from_alt_names(metadata['alternative_names'])
         log("Converting " + sxs_id)
 
-        extrapolation_order = "Extrapolated_N2"
+
+        if extrapolation_order == 2:
+            extrapolation_order = "Extrapolated_N2"
+        elif extrapolation_order == 3:
+            extrapolation_order = "Extrapolated_N3"
+        elif extrapolation_order == 4:
+            extrapolation_order = "Extrapolated_N4"
+        else:
+            extrapolation_order = "OutermostExtraction"
         log("Extrapolation order: " + extrapolation_order)
 
-        log("Alternative_name: " + self.alternative_name)
+
         if self.alternative_name is None:
             out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
         else:
+            log("Alternative_name: " + self.alternative_name)
             out_name = out_path + "/" +self.alternative_name+ "_Res" + str(resolution) + ".h5"
 
         log("Output filename is '{0}'".format(out_name))
@@ -214,7 +223,7 @@ class SimulationConverter(object):
 
 
 def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution=None,
-                       modes=8, tolerance=1e-06, quiet=False, alternative_name = None):
+                       modes=8, tolerance=1e-06, quiet=False, alternative_name = None,extrapolation_order =2):
     """Convert a simulation from the SXS BBH catalog into the LVC format.
 
     This function outputs a file in LVC format named SXS_BBH_####_Res#.h5 in
@@ -252,4 +261,4 @@ def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution
 
     """
     lvc_converter = SimulationConverter(modes, tolerance, quiet, alternative_name )
-    return lvc_converter.convert(sxs_data_path, out_path, truncation_time, resolution)
+    return lvc_converter.convert(sxs_data_path, out_path, truncation_time, resolution,extrapolation_order =2)

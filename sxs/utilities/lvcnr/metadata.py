@@ -190,6 +190,9 @@ def write_metadata_from_sxs(out_filename, resolution, metadata, catalog,
             # measure eccentricity?
             log("Warning: eccentricity not measured for this simulation")
             eccentricity = -1.0
+        elif eccentricity == None:
+            eccentricity = -1.0
+
         else:
             eccentricity = float(eccentricity)
 
@@ -197,6 +200,8 @@ def write_metadata_from_sxs(out_filename, resolution, metadata, catalog,
         if isinstance(mean_anomaly, str):
             if mean_anomaly == '[unknown]':
                 mean_anomaly = -1.0
+            elif eccentricity == None:
+                eccentricity = -1.0
             else:
                 mean_anomaly = float(mean_anomaly)
 
