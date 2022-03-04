@@ -109,9 +109,10 @@ class SimulationConverter(object):
         value.
 
         """
-        def __init__(self, quiet):
+        def __init__(self, quiet, alternative_name):
             self.history = ""
             self.quiet = quiet
+            self.alternative_name = alternative_name
 
         def __call__(self, string):
             if not self.quiet:
@@ -124,7 +125,7 @@ class SimulationConverter(object):
         def __repr__(self):
             return repr(self.history)
 
-    def __init__(self, sxs_catalog_path='~/.sxs/catalog', modes=8, tolerance=1e-06, quiet=False):
+    def __init__(self, sxs_catalog_path='~/.sxs/catalog', modes=8, tolerance=1e-06, quiet=False, alternative_name=None):
         """Create an object to be used for converting many waveforms to LVC format
 
         Parameters
@@ -158,6 +159,7 @@ class SimulationConverter(object):
         self.modes = modes
         self.tolerance = tolerance
         self.quiet = quiet
+        self.alternative_name = alternative_name
 
         self.code_versions = textwrap.dedent("""\
             python=={python}
@@ -185,12 +187,16 @@ class SimulationConverter(object):
                 sxs_catalog_path={sxs_catalog_path!r},
                 modes={modes!r},
                 tolerance={tolerance!r},
-                quiet={quiet!r}
+                quiet={quiet!r},
+                alternative_name = {alternative_name!r},
+                extrapolation_order ={{extrapolation_order!r}}
             )""".format(
                 sxs_catalog_path=sxs_catalog_path,
                 modes=modes,
                 tolerance=tolerance,
-                quiet=quiet
+                quiet=quiet,
+                alternative_name = alternative_name,
+                extrapolation_order =extrapolation_order
             ))
 
         # Make sense of the `modes` parameter
@@ -212,7 +218,7 @@ class SimulationConverter(object):
         self.sxs_catalog_resolutions = sxs.zenodo.catalog.resolutions_for_simulations(self.sxs_catalog)
 
 
-    def convert(self, sxs_data_path, out_path, truncation_time=None, resolution=None):
+    def convert(self, sxs_data_path, out_path, truncation_time=None, resolution=None, extrapolation_order=2):
         """Convert a simulation from the SXS BBH catalog into the LVC format.
 
         This function outputs a file in LVC format named SXS_BBH_####_Res#.h5 in out_path.
@@ -241,7 +247,7 @@ class SimulationConverter(object):
         from .horizons import horizon_splines_from_sxs, write_horizon_splines_from_sxs
         from .waveforms import convert_modes
 
-        log = self.Log(self.quiet)
+        log = self.Log(self.quiet,self.alternative_name)
         log(self.command.format(sxs_data_path=sxs_data_path, out_path=out_path,
                                 truncation_time=truncation_time, resolution=resolution))
         log("Starting at "+time.strftime('%H:%M%p %Z on %b %d, %Y'))
@@ -259,11 +265,28 @@ class SimulationConverter(object):
         sxs_id = sxs_id_from_alt_names(metadata['alternative_names'])
         log("Converting " + sxs_id)
 
-        extrapolation_order = "Extrapolated_N2"
+        #extrapolation_order = "Extrapolated_N2"
+        #log("Extrapolation order: " + extrapolation_order)
+        if extrapolation_order == 2:
+            extrapolation_order = "Extrapolated_N2"
+        elif extrapolation_order == 3:
+            extrapolation_order = "Extrapolated_N3"
+        elif extrapolation_order == 4:
+            extrapolation_order = "Extrapolated_N4"
+        else:
+            extrapolation_order = "OutermostExtraction"
+
         log("Extrapolation order: " + extrapolation_order)
 
-        out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
-        log("Output filename is '{0}'".format(out_name))
+
+        if self.alternative_name is None:
+            out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
+        else:
+            log("Alternative_name: " + self.alternative_name)
+            out_name = out_path + "/" +self.alternative_name+ "_Res" + str(resolution) + ".h5"
+
+        #out_name = out_path + "/" + sxs_id.replace(':', '_') + "_Res" + str(resolution) + ".h5"
+        #log("Output filename is '{0}'".format(out_name))
 
         start_time, peak_time, version_hist = convert_modes(sxs_data_path + "/rhOverM_Asymptotic_GeometricUnits_CoM.h5",
                                                             metadata, out_name, self.modes, extrapolation_order, log,
@@ -295,7 +318,8 @@ class SimulationConverter(object):
 
 
 def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution=None,
-                       sxs_catalog_path='~/.sxs/catalog', modes=8, tolerance=1e-06, quiet=False):
+                       sxs_catalog_path='~/.sxs/catalog', modes=8, tolerance=1e-06, quiet=False,
+                       alternative_name =None, extrapolation_order =2):
     """Convert a simulation from the SXS BBH catalog into the LVC format.
 
     This function outputs a file in LVC format named SXS_BBH_####_Res#.h5 in out_path.
@@ -331,5 +355,5 @@ def convert_simulation(sxs_data_path, out_path, truncation_time=None, resolution
         log in the output file.
 
     """
-    lvc_converter = SimulationConverter(sxs_catalog_path, modes, tolerance, quiet)
-    return lvc_converter.convert(sxs_data_path, out_path, truncation_time, resolution)
+    lvc_converter = SimulationConverter(sxs_catalog_path, modes, tolerance, quiet,alternative_name)
+    return lvc_converter.convert(sxs_data_path, out_path, truncation_time, resolution, extrapolation_order=extrapolation_order)
